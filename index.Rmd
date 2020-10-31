@@ -1,5 +1,6 @@
 ---
 title: "IODS course project"
+Author: "Ambrin Farizah Babu"
 output:
   html_document:
     theme: cosmo

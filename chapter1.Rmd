@@ -7,6 +7,11 @@
 # This is a so-called "R chunk" where you can write R code.
 
 date()
+"I am Ambrin from the University of Eastern Finland."
+"I am planning to learn basics of R here"
+"I am curious"
+"I heard about this course from the yammer platform of my University"
+"https://github.com/ambrinbabu/IODS-project/"
 
 ```
 The text continues here.
