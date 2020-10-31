@@ -8,6 +8,7 @@
 
 date()
 "I am Ambrin from the University of Eastern Finland."
+"I am based in Kuopio"
 "I am doing my PhD in Health Sciences"
 "I am planning to learn basics of R and concepts about open data science here"
 "I am curious"
