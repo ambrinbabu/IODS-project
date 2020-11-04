@@ -9,5 +9,146 @@
 ```{r}
 date()
 ```
+We would like to read the students2014 data into R from the url provided and would like to explore the data.
+```{r}
+#Read the students2014 data into R from url and store in students2014
+students2014 <- read.table("http://s3.amazonaws.com/assets.datacamp.com/production/course_2218/datasets/learning2014.txt",sep=",", header=TRUE )
+head(students2014)
 
-Here we go again...
+
+```
+
+
+```{r}
+#Explore the structure of the data 
+str(students2014)
+```
+The data is in the form of a data frame and as we can see, there are 7 columns of data representing gender, age, attitude, deep, stra, surf and points. There are 166 observations (rows). 
+The data comes from ASSIST (The approaches and study skills inventory for students) and includes information about 116 students of different age groups and comprise both male and female and approaches they use for learning - surface approach (memorise without understanding with a serious lack of personal engagement in learning process), deep approach (intention to maximise understanding with a true commitment to learning)  and strategic approach (apply any strategy that maximises the chance of chieving highest possible grades). The student achievments are measured by points in the exams
+
+```{r}
+#Explore the dimensions of the data
+dim(students2014)
+```
+```{r}
+#ggplot2 is a popular library for creating stunning graphics with R.
+#install.packages("ggplot2")
+library(ggplot2)
+```
+
+
+
+```{r}
+#Show a graphical overview of the data 
+p1 <- ggplot(students2014, aes(x = attitude, y = points, col = gender))
+
+# define the visualization type (points)
+p2 <- p1 + geom_point()
+
+
+# add a regression line
+p3 <- p2 + geom_smooth(method = "lm")
+
+
+# add a main title and draw the plot
+p4 <- p3+ ggtitle("Student's attitude versus exam points")
+p4
+
+
+```
+
+Here we see a graphical overview of the data and see the relationship between the attitude vs exam points
+
+```{r}
+#Show summaries of the variables in the data. Describe and interpret the outputs, commenting on the distributions of the variables and the relationships between them
+##Simple regression
+
+# a scatter plot of points versus attitude
+library(ggplot2)
+qplot(attitude, points, data = students2014) + geom_smooth(method = "lm")
+
+# fit a linear model
+my_model <- lm(points ~ attitude, data = students2014)
+
+# print out a summary of the model
+
+summary(my_model)
+```
+We see here a linear model fitted for our data.Linear regression model is a simple statistical model.It is an approach for modelling the relationship between a dependent variable y and one or more exploratory variables x.The model is found by minimising the sum of the residuals.Residuals are essentially the difference between the actual observed response values and the response values that the model predicted. 
+
+The exam points are the target variable and attitude is the explanatory variable. The variables are evenly distributed. 
+The summary of the variables in the data is also shown.The Residuals section of the model output breaks it down into 5 summary points - min, 1Q, median, 2Q and max. 
+The coefficients gives estimates for the parameters of the model.In this case the p value for attitude is very low. So there is a statistical relationship between attitude and points.
+
+```{r}
+#Choose three variables as explanatory variables and fit a regression model where exam points is the target (dependent) variable. Show a summary of the fitted model and comment and interpret the results. Explain and interpret the statistical test related to the model parameters. If an explanatory variable in your model does not have a statistically significant relationship with the target variable, remove the variable from the model and fit the model again without it.
+my_model2 <- lm(points ~ attitude + stra + surf, data = students2014)
+summary(my_model2)
+```
+
+Here 3 variables (attitude, strategic learning, surface learning) are explanatory variables and a multiple regression model is fitted where points is the target variable. There are 5 point summary of residuals of model - min, 1Q, median, 3Q and Max. 
+
+Below the residuals section, we see coefficients which gives estimates for the parameters of the model. The estimate corresponding to the intercept is the estimate of alpha parameter and the estimate corresponding to attitude is beta parameter. Here we estimated the effect of attitude on points to be 11.01 with standard difference of approx 3.68. We also have t and p values corresponding to  statistics test of null hypothesis  that the actual value of beta parameter would be 0. In this case the p value for attitude is very low. So there is a statistical relationship between attitude and points.However, for stra and surf, these values are not statistically significant and so there is no statistical relationship between stra (or surf) and points.
+
+Residual Standard Error is the measure of the quality of a linear regression fit. Theoretically, every linear model is assumed to contain an error term E. Due to the presence of this error term, we are not capable of perfectly predicting our explanatory variable  from the target variable. The Residual Standard Error is the average amount that the response will deviate from the true regression line. It’s also worth noting that the Residual Standard Error was calculated with 162 degrees of freedom. Simplistically, degrees of freedom are the number of data points that went into the estimation of the parameters used after taking into account these parameters. 
+
+The R-squared (R2) statistic provides a measure of how well the model is fitting the actual data. It takes the form of a proportion of variance. R2 is a measure of the linear relationship between our target variable and our explanatory variable. It always lies between 0 and 1 (i.e.: a number near 0 represents a regression that does not explain the variance in the response variable well and a number close to 1 does explain the observed variance in the response variable). In our example, the R2 we get is 0.2074. Or roughly 20% of the variance found in the explanatory variables can be explained by the target variable. 
+
+```{r}
+#If an explanatory variable in your model does not have a statistically significant relationship with the target variable, remove the variable from the model and fit the model again without it.
+my_model2 <- lm(points ~ attitude, data = students2014)
+summary(my_model2)
+```
+In the previous example, we saw that 2 of the explanatory variables (strategic and surface learning) did not have a statistically significant relationship with the target variable (points). Hence we removed the 2 variables and fitted the model again without it.
+
+
+```{r}
+#Produce the following diagnostic plots: Residuals vs Fitted values, Normal QQ-plot and Residuals vs Leverage
+# create a regression model with multiple explanatory variables
+my_model2 <- lm(points ~ attitude + stra, data = students2014)
+# draw diagnostic plots using the plot() function. Choose the plots 1, 2 and 5
+#1 residuals vs fitted values
+#2 Normal QQplot
+#5 Residuals vs levarage
+par(mfrow = c(2,2))
+plot(my_model2, which = 2)
+```
+
+Statistical models always include several assumption which describe the data generating process. In a linear regression model, we assume linearity. The target variable is modelled as a linear combination of the model parameters. Usually it is assumed that the errors are normally distributed, not correlated and have constant variance. Further, its also assumed that the size of a given error does not depend on the values of the explanatory variables.
+
+QQ-plot: QQ plot of the residuals provides a meathod to explore the assumption that the errors of the model are normally distributed. The better the points fall within the line, the better is the fit to the 
+normality assumption. In our case, we see a reasonable fit.
+
+```{r}
+#Produce the following diagnostic plots: Residuals vs Fitted values, Normal QQ-plot and Residuals vs Leverage
+# create a regression model with multiple explanatory variables
+my_model2 <- lm(points ~ attitude + stra, data = students2014)
+# draw diagnostic plots using the plot() function. Choose the plots 1, 2 and 5
+#1 residuals vs fitted values
+#2 Normal QQplot
+#5 Residuals vs levarage
+par(mfrow = c(2,2))
+plot(my_model2, which = 1)
+```
+
+The constant variance assumption implies that the size of the errors should not depend on the explanatory variables.This can be explored by plotting a scatter plot of residuals versus model predictors. In our case, we dont see when fitted values increase, spread of residuals increase, indicating a problem. 
+
+```{r}
+#Produce the following diagnostic plots: Residuals vs Fitted values, Normal QQ-plot and Residuals vs Leverage
+# create a regression model with multiple explanatory variables
+my_model2 <- lm(points ~ attitude + stra, data = students2014)
+# draw diagnostic plots using the plot() function. Choose the plots 1, 2 and 5
+#1 residuals vs fitted values
+#2 Normal QQplot
+#5 Residuals vs levarage
+par(mfrow = c(2,2))
+plot(my_model2, which = 5)
+```
+
+
+Leverage of observations measures how much impact a single observation has on the model.Residuals vs leverage plot can help identify which observations have an unusually high impact.We do not have one particular point with very high leverage so we can conclude that it is a regular leverage without any outliers.
+
+
+
+
+

@@ -18,15 +18,7 @@ output:
 ```{r child = "chapter1.Rmd"}
 # This will include Chapter 1 (that is updated in its own file) in the document.
 
-date()
-"I am Ambrin from the University of Eastern Finland."
-"I am based in Kuopio."
-"I am doing my PhD in Health Sciences"
-"I am planning to learn basics of R and concepts about open data science here"
-"I am curious"
-"I heard about this course from the yammer platform of my University"
-"Its great to learn new things."
-"The link to my github repository is https://github.com/ambrinbabu/IODS-project/"
+
 ```
   
 ***
