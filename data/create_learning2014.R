@@ -8,6 +8,7 @@ library(dplyr)
 x <- read.table("http://www.helsinki.fi/~kvehkala/JYTmooc/JYTOPKYS3-data.txt",sep="\t", header=TRUE )
 x
 
+head(x)
 #dimensions of data
 dim(x)
 #dimensions: 183rows, 60columns
@@ -50,8 +51,10 @@ learning2014 <- filter(learning2014, Points > "0")
 # see the stucture of the new dataset
 str(learning2014)
 
+#setwording directory
 setwd("C:/Users/Ambrin/Documents/IODS-project")
 
+#write data into csv file
 write.csv(learning2014, file = "Data/learning2014.csv")
 
 # Demonstrate that you can also read the data again
