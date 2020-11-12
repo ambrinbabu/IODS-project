@@ -25,7 +25,7 @@ str(alc)
 dim(alc)
 ```
 
-It is a dataframe with 370 observation and 51 variables. The data is about the secondary school in 2 schools and their achievements. The data contains information about the different students, their age, sex etc. and if they consume high levels of alcohol or not.
+It is a dataframe with 370 observation and 51 variables. The data is about the secondary school in 2 portugese schools and their achievements. The data attributes include student grades, demographic, social and school related features) and it was collected by using school reports and questionnaires. Two datasets are provided regarding the performance in two distinct subjects: Mathematics (mat) and Portuguese language (por).The data contains information also about the different students, their age, sex etc. and if they consume high levels of alcohol or not. The alcohol consumption scale ranges from 1 (very low) to 5 (very high).
 
 
 Hypothesis: My hypothesis is that many reasons affect the alcohol consumption.I have chosen 4 interesting variables - gender, famrel, goout (going out with friends) and freetime. 
@@ -94,6 +94,7 @@ cbind(OR, CI)
 ```
 Odd ratios s a statistic that quantifies the strength of the association between two events. If it is greater than 1 we have a positive association and if the odd ratio is smaller than 1 its a negative association. 
 Going out with friends, sex and free time have a positve association with high alcohol use an family relation has negative association. The results are according to the stated hypothesis.
+The confidence intervals are widest for the the sex variable, so its effect is the most uncertain
 
 
 Predictive model
@@ -138,7 +139,7 @@ cv <- cv.glm(data = alc, cost = loss_func, glmfit = m, K = nrow(alc)) # K-fold c
 # average number of wrong predictions in the cross validation
 cv$delta[1]
 ```
-This is the total proportion of inaccurately classified individuals. The number is about 22% and is not very high. So our model is performing good but can be improved.
+Training error can be calculated by adding false positives and false negatives. This is further confirmed by loss function. Here, we can see the total proportion of inaccurately classified individuals. The number is about 22% and is not very high. So our model is performing good but can be improved.
 
 
 Bonus question
@@ -155,3 +156,7 @@ cv <- cv.glm(data = alc, cost = loss_func, glmfit = m, K = 10) # K-fold cross-va
 cv$delta[1]
 ```
 This model has a better test set performance (0.24) compared to model in Datacample(0.26). 10-fold cross-validation gives good estimate of the actual predictive power of the model. Low value = good
+
+```{r}
+
+```
