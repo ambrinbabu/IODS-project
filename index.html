@@ -450,7 +450,7 @@ summary {
 <pre class="r"><code># This is a so-called &quot;R chunk&quot; where you can write R code.
 
 date()</code></pre>
-<pre><code>## [1] &quot;Thu Nov 12 19:41:22 2020&quot;</code></pre>
+<pre><code>## [1] &quot;Thu Nov 12 19:55:15 2020&quot;</code></pre>
 <pre class="r"><code>&quot;I am Ambrin from the University of Eastern Finland&quot;</code></pre>
 <pre><code>## [1] &quot;I am Ambrin from the University of Eastern Finland&quot;</code></pre>
 <pre class="r"><code>&quot;I am based in Kuopio.&quot;</code></pre>
@@ -480,7 +480,7 @@ date()</code></pre>
 <li>Assume the reader has no previous knowledge of your data or the more advanced methods you are using.</li>
 </ul>
 <pre class="r"><code>date()</code></pre>
-<pre><code>## [1] &quot;Thu Nov 12 19:41:22 2020&quot;</code></pre>
+<pre><code>## [1] &quot;Thu Nov 12 19:55:15 2020&quot;</code></pre>
 <p>We would like to read the students2014 data into R from the url provided and would like to explore the data.</p>
 <pre class="r"><code>#Read the students2014 data into R from url and store in students2014
 students2014 &lt;- read.table(&quot;http://s3.amazonaws.com/assets.datacamp.com/production/course_2218/datasets/learning2014.txt&quot;,sep=&quot;,&quot;, header=TRUE )
@@ -655,7 +655,7 @@ plot(my_model2, which = 5)</code></pre>
 <li>Assume the reader has no previous knowledge of your data or the more advanced methods you are using.</li>
 </ul>
 <pre class="r"><code>date()</code></pre>
-<pre><code>## [1] &quot;Thu Nov 12 19:41:26 2020&quot;</code></pre>
+<pre><code>## [1] &quot;Thu Nov 12 19:55:20 2020&quot;</code></pre>
 <pre class="r"><code># read data 
 alc &lt;- read.csv(&quot;https://github.com/rsund/IODS-project/raw/master/data/alc.csv&quot;)
 # explore structure and dimension
@@ -919,7 +919,7 @@ cv &lt;- cv.glm(data = alc, cost = loss_func, glmfit = m, K = 10) # K-fold cross
 # average number of wrong predictions in the cross validation
 cv$delta[1]</code></pre>
 <pre><code>## [1] 0.2297297</code></pre>
-<p>This model has a better test set performance (0.24) compared to model in Datacample(0.26). 10-fold cross-validation gives good estimate of the actual predictive power of the model. Low value = good</p>
+<p>This model has a better test set performance (0.22) compared to model in Datacample(0.26). 10-fold cross-validation gives good estimate of the actual predictive power of the model. Low value = good</p>
 </div>
 
 

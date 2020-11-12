@@ -155,7 +155,7 @@ cv <- cv.glm(data = alc, cost = loss_func, glmfit = m, K = 10) # K-fold cross-va
 # average number of wrong predictions in the cross validation
 cv$delta[1]
 ```
-This model has a better test set performance (0.24) compared to model in Datacample(0.26). 10-fold cross-validation gives good estimate of the actual predictive power of the model. Low value = good
+This model has a better test set performance (0.22) compared to model in Datacample(0.26). 10-fold cross-validation gives good estimate of the actual predictive power of the model. Low value = good
 
 ```{r}
 
