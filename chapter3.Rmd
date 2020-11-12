@@ -97,8 +97,9 @@ Going out with friends, sex and free time have a positve association with high a
 
 
 Predictive model
+Predictive power of the final logistic regression model is calculated without the statistically insignificant variable - freetime
 ```{r}
-m <- glm(high_use ~ goout + famrel + freetime + sex, data = alc, family = "binomial")
+m <- glm(high_use ~ goout + famrel + sex, data = alc, family = "binomial")
 
 # predict() the probability of high_use
 probabilities <- predict(m, type = "response")
@@ -109,7 +110,7 @@ alc <- mutate(alc, probability = probabilities)
 # use the probabilities to make a prediction of high_use
 alc <- mutate(alc, prediction = probability > 0.5)
 
-select(alc, goout, famrel, freetime, sex, high_use, probability, prediction) %>% tail(10)
+select(alc, goout, famrel, sex, high_use, probability, prediction) %>% tail(10)
 
 # creating a confusion matrix with actual values
 table(high_use = alc$high_use, prediction = alc$prediction)
@@ -122,8 +123,7 @@ g
 
 ```
 
-236 students dont consume high levels of alcohol. 23 are predicted wrongly (dont drink alcohol but is predicted to be drinking high levels of alcohol). 48 students drink alcohol and prediction is correct but 63 students drink alcohol but it is predicted that they dont.
-
+241 students dont consume high levels of alcohol. 18 are predicted wrongly (dont drink alcohol but is predicted to be drinking high levels of alcohol). 49 students drink alcohol and prediction is correct but 62 students drink alcohol but it is predicted that they dont.
 
 Training error
 ```{r}
@@ -138,7 +138,7 @@ cv <- cv.glm(data = alc, cost = loss_func, glmfit = m, K = nrow(alc)) # K-fold c
 # average number of wrong predictions in the cross validation
 cv$delta[1]
 ```
-This is the total proportion of inaccurately classified individuals. The number is about 23% and is not very high. So our model is performing good but can be improved.
+This is the total proportion of inaccurately classified individuals. The number is about 22% and is not very high. So our model is performing good but can be improved.
 
 
 Bonus question
@@ -154,4 +154,4 @@ cv <- cv.glm(data = alc, cost = loss_func, glmfit = m, K = 10) # K-fold cross-va
 # average number of wrong predictions in the cross validation
 cv$delta[1]
 ```
-This model has a better test set performance (0.23) compared to model in Datacample(0.26 error)
+This model has a better test set performance (0.24) compared to model in Datacample(0.26). 10-fold cross-validation gives good estimate of the actual predictive power of the model. Low value = good
