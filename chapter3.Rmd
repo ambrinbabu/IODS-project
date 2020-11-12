@@ -1,0 +1,157 @@
+---
+title: "R Notebook - Exercise 3"
+output: html_notebook
+---
+
+
+# Chapter 3
+
+*Describe the work you have done this week and summarize your learning.*
+
+- Describe your work and results clearly. 
+- Assume the reader has an introductory course level understanding of writing and reading R code as well as statistical methods.
+- Assume the reader has no previous knowledge of your data or the more advanced methods you are using.
+
+```{r}
+date()
+```
+
+
+```{r}
+# read data 
+alc <- read.csv("https://github.com/rsund/IODS-project/raw/master/data/alc.csv")
+# explore structure and dimension
+str(alc)
+dim(alc)
+```
+
+It is a dataframe with 370 observation and 51 variables. The data is about the secondary school in 2 schools and their achievements. The data contains information about the different students, their age, sex etc. and if they consume high levels of alcohol or not.
+
+
+Hypothesis: My hypothesis is that many reasons affect the alcohol consumption.I have chosen 4 interesting variables - gender, famrel, goout (going out with friends) and freetime. 
+Gender- I hypothesise that male drink more than women. 
+famrel - When there are more family relations, less alcohol is consumed
+goout - when someone goes out with friends, more alcohol is consumed
+freetime - when there is more freetime, more alcohol is consumed
+```{r}
+#Numerically and graphically explore the distributions of your chosen variables and their relationships with alcohol consumption (use for example cross-tabulations, bar plots and box plots). Comment on your findings and compare the results of your exploration to your previously stated hypotheses.
+library(tidyr); library(dplyr); library(ggplot2)
+gather(alc) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free") + geom_bar()
+alc %>% group_by(sex, high_use) %>% summarise(count = n())
+alc %>% group_by(failures, high_use) %>% summarise(count = n())
+alc %>% group_by(famrel, high_use) %>% summarise(count = n())
+alc %>% group_by(goout, high_use) %>% summarise(count = n())
+
+```
+Gender - more male students drink more (according to hypothesis)
+Famrel - More relatives around, less alcohol is consumed (according to hypothesis)
+goout - When students go out, more alcohol is consumed (according to hypothesis)
+freetime - more free time, more students drink alcohol (according to hypothesis)
+
+```{r}
+#Graphical results
+
+g1<- ggplot(alc, aes(x = high_use, y = famrel))+ geom_boxplot() + ggtitle("Family relationship vs alcohol consumption")
+g1
+
+g2<-ggplot(alc, aes(x = high_use, y = famrel, col = sex))+ geom_boxplot() + ggtitle("Family relationship vs alcohol consumption according to gender")
+g2
+
+g3<- ggplot(alc, aes(x = high_use, y = goout))+ geom_boxplot() + ggtitle("Going out with friends vs alcohol consumption")
+g3
+
+g4<-ggplot(alc, aes(x = high_use, y = goout, col = sex))+ geom_boxplot() + ggtitle("Going out with friends vs alcohol consumption according to gender")
+g4
+
+g5<- ggplot(alc, aes(x = high_use, y = freetime))+ geom_boxplot() + ggtitle("Freetime vs alcohol consumption")
+g5
+
+g6<-ggplot(alc, aes(x = high_use, y = freetime, col = sex))+ geom_boxplot() + ggtitle("Freetime vs alcohol consumption according to gender")
+g6
+```
+
+
+
+Logistic regression
+```{r}
+m <- glm(high_use ~ goout + famrel + sex+ freetime, data = alc, family = "binomial")
+summary(m)
+
+```
+
+We see here a linear model fitted for our data.Linear regression model is a simple statistical model.It is an approach for modelling the relationship between a dependent variable y and one or more exploratory variables x.The model is found by minimising the sum of the residuals.Residuals are essentially the difference between the actual observed response values and the response values that the model predicted. 
+
+The high alcohol use is the target variable and goout + famrel + sex+ freetime is the explanatory variable. The variables are evenly distributed. 
+The summary of the variables in the data is also shown.The Residuals section of the model output breaks it down into 5 summary points - min, 1Q, median, 2Q and max. 
+The coefficients gives estimates for the parameters of the model.In this case the p value for goout, famrel, and sex is very low. So there is a statistical relationship between going out with friends, family relationships and sex with high alcohol use.Free time has p value above 0.05 so there is no statistical relationship between high alcohol use and free time.
+
+```{r}
+#Present and interpret the coefficients of the model as odds ratios and provide confidence intervals for them. Interpret the results and compare them to your previously stated hypothesis.
+coef(m)
+OR <- coef(m) %>% exp
+CI <- confint(m) %>% exp 
+cbind(OR, CI)
+```
+Odd ratios s a statistic that quantifies the strength of the association between two events. If it is greater than 1 we have a positive association and if the odd ratio is smaller than 1 its a negative association. 
+Going out with friends, sex and free time have a positve association with high alcohol use an family relation has negative association. The results are according to the stated hypothesis.
+
+
+Predictive model
+```{r}
+m <- glm(high_use ~ goout + famrel + freetime + sex, data = alc, family = "binomial")
+
+# predict() the probability of high_use
+probabilities <- predict(m, type = "response")
+
+# add the predicted probabilities to 'alc'
+alc <- mutate(alc, probability = probabilities)
+
+# use the probabilities to make a prediction of high_use
+alc <- mutate(alc, prediction = probability > 0.5)
+
+select(alc, goout, famrel, freetime, sex, high_use, probability, prediction) %>% tail(10)
+
+# creating a confusion matrix with actual values
+table(high_use = alc$high_use, prediction = alc$prediction)
+
+ # creating a confusion matrix with predicted values
+table(high_use = alc$high_use, prediction = alc$prediction) %>% prop.table %>% addmargins 
+
+g <- ggplot(alc, aes(x = probability, y = high_use, col = prediction))+ geom_point() + ggtitle("logistic regression model")
+g 
+
+```
+
+236 students dont consume high levels of alcohol. 23 are predicted wrongly (dont drink alcohol but is predicted to be drinking high levels of alcohol). 48 students drink alcohol and prediction is correct but 63 students drink alcohol but it is predicted that they dont.
+
+
+Training error
+```{r}
+loss_func <- function(class, prob) {
+  n_wrong <- abs(class - prob) > 0.5
+  mean(n_wrong)
+}
+# compute the average number of wrong predictions in the (training) data
+loss_func(class = alc$high_use, prob = alc$probability) 
+library(boot)
+cv <- cv.glm(data = alc, cost = loss_func, glmfit = m, K = nrow(alc)) # K-fold cross-validation, cv=training data
+# average number of wrong predictions in the cross validation
+cv$delta[1]
+```
+This is the total proportion of inaccurately classified individuals. The number is about 23% and is not very high. So our model is performing good but can be improved.
+
+
+Bonus question
+```{r}
+loss_func <- function(class, prob) {
+  n_wrong <- abs(class - prob) > 0.5
+  mean(n_wrong)
+}
+ # compute the average number of wrong predictions in the (training) data
+loss_func(class = alc$high_use, prob = alc$probability)
+library(boot)
+cv <- cv.glm(data = alc, cost = loss_func, glmfit = m, K = 10) # K-fold cross-validation, cv=training data
+# average number of wrong predictions in the cross validation
+cv$delta[1]
+```
+This model has a better test set performance (0.23) compared to model in Datacample(0.26 error)
