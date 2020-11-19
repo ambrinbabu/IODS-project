@@ -1,0 +1,237 @@
+---
+title: "chapter4"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+In this exercise we use Boston data from MASS-library. This dataset contains information collected by the U.S Census Service concerning housing in the area of Boston Mass. Data includes 14 variables and 506 rows
+
+```{r}
+# access the MASS package and load other libraries for later analysis
+library(MASS)
+library(corrplot)
+library(dplyr)
+library(plotly)
+
+# load the data
+ data("Boston")
+str(Boston)
+dim(Boston)
+
+```
+
+
+```{r}
+#Show a graphical overview of the data and show summaries of the variables in the data. Describe and interpret the outputs, commenting on the distributions of the variables and the relationships between them
+summary(Boston)
+pairs(Boston)
+
+```
+
+There are some very interesting distributions fo variables in the plot matrix. Variable *rad* has high and low values so the plot shows that the values are concentrated on either side of the plot.  
+
+#Correlation matrix#
+```{r}
+#calculating the correlation matrix and correlation plot
+cor_matrix <- round(cor(Boston),digits = 2)
+corrplot(cor_matrix, method="circle", type = "upper", cl.pos = "b", tl.pos = "d", tl.cex = 0.6)
+```
+Plotted correlation matrix shows that there is some high correlation between variables:
+* Correlation is quite clear between industrial areas (*indus*) and nitrogen oxides (*nox*). Industry adds pollution in the area. Industry seems to correlate also with variablrs like *age*, *dis*, *ras* and *tax*.
+* Nitrogen oxides (*nox*) correlations are very similar with industry (*indus*)
+* Crime rate (*crim*) seems to correlate with good accessibilitty to radial highways (*rad*) and value property (*tax*).
+* Old houses (*age*) and employment centers have also something common 
+
+
+#Scaled data#
+All the variables are numerical so we can use scale()-function to scale whole data set
+```{r}
+#Standardize the dataset and print out summaries of the scaled data. How did the variables change? 
+boston_scaled <- scale(Boston)
+summary(boston_scaled)
+class(boston_scaled)
+boston_scaled <- as.data.frame(boston_scaled)
+```
+Scaling the data makes variables look as if they are in the same range. Variables like *black* and *tax* were before scaling hundred fold compared to some other variables
+
+```{r}
+#Create a categorical variable of the crime rate in the Boston dataset (from the scaled crime rate). Use the quantiles as the break points in the categorical variable. Drop the old crime rate variable from the dataset. 
+#save the scaled crim as scaled_crim
+scaled_crim <- boston_scaled$crim
+#create a quantile vector of crim and print it
+bins <- quantile(scaled_crim)
+bins
+#create a categorical variable 'crime'
+crime <- cut(scaled_crim, breaks = bins, include.lowest = TRUE, label = c("low", "med_low", "med_high", "high"))
+#look at the table of the new factor crime, do not change the actual variable "crime"
+crime_tab <-table(crime)
+crime_tab
+#remove original crim from the dataset
+boston_scaled <- dplyr::select(boston_scaled, -crim)
+# add the new categorical value to scaled data
+boston_scaled <- data.frame(boston_scaled, crime)
+summary(boston_scaled)
+
+```
+
+#Train and test set#
+Training set contains 80% of the data. 20% is in the test set
+```{r}
+#Divide the dataset to train and test sets, so that 80% of the data belongs to the train set
+# number of rows in the Boston dataset 
+n <- nrow(boston_scaled)
+# choose randomly 80% of the rows
+ind <- sample(n,  size = n * 0.8)
+ind
+# create train set
+train <- boston_scaled[ind,]
+# create test set 
+test <- boston_scaled[-ind,]
+```
+
+#Fitting the Linear Discriminant Analysis#
+First the linear discriminant analysis (LDA) is fitted to the train set. The new categorical variable *crime* is the target variable and all the other variables of the dataset are predictor variables.
+After fitting we draw the LDA biplot with arrows
+```{r}
+#Fit the linear discriminant analysis on the train set. Use the categorical crime rate as the target variable and all the other variables in the dataset as predictor variables. Draw the LDA (bi)plot.
+#LDA = linear discriminant analysis
+lda.fit <- lda(crime ~. , data = train)
+#print the lda.fit object
+lda.fit
+#the function for lda biplot arrows
+lda.arrows <- function(x, myscale = 1, arrow_heads = 0.1, color = "red", tex = 0.75, choices = c(1,2)){
+  heads <- coef(x)
+  arrows(x0 = 0, y0 = 0, 
+         x1 = myscale * heads[,choices[1]], 
+         y1 = myscale * heads[,choices[2]], col=color, length = arrow_heads)
+  text(myscale * heads[,choices], labels = row.names(heads), 
+       cex = tex, col=color, pos=3)
+}
+#target classes as numeric
+classes <- as.numeric(train$crime)
+classes
+#plot the lda results
+plot(lda.fit, dimen = 2, col = classes, pch = classes)
+lda.arrows(lda.fit, myscale = 3)
+```
+
+#Predicting the classes#
+```{r}
+#Save the crime categories from the test set and then remove the categorical crime variable from the test dataset. Then predict the classes with the LDA model on the test data. Cross tabulate the results with the crime categories from the test set. Comment on the results
+#save the correct classes from test data
+correct_classes <- test$crime
+#remove the crime variable from test data
+test <- dplyr::select(test, -crime)
+#predict classes with test data
+lda.pred <- predict(lda.fit, newdata = test)
+#cross tabulate the results
+table(correct = correct_classes, predicted = lda.pred$class)
+```
+Prediction were quite good. There was some errors in the middle of the range but classes low and especially high were good. Only one correct representative of high class was predicted to med_low class.
+
+```{r}
+#Reload the Boston dataset and standardize the dataset (we did not do this in the Datacamp exercises, but you should scale the variables to get comparable distances). Calculate the distances between the observations. Run k-means algorithm on the dataset. Investigate what is the optimal number of clusters and run the algorithm again. Visualize the clusters (for example with the pairs() or ggpairs() functions, where the clusters are separated with colors) and interpret the results
+#Loading and scaling Boston data
+scaled_Boston <- scale(Boston)
+summary(scaled_Boston)
+#calculating the euclidean distance matrix between the observation
+dist_eu <- dist(scaled_Boston)
+#determining the max number of clusters
+cluster_max <- 15
+#calculate the total within sum of squares
+#K-means might produce different results every time, because it randomly 
+#assigns the initial cluster centers. The function set.seed() can be used to 
+#deal with that.
+set.seed(123)
+twcss <- sapply(1:cluster_max, function(k){kmeans(dist_eu, k)$tot.withinss})
+# visualize the results
+plot(1:cluster_max, twcss, type='b')
+```
+
+One way to determine the number of clusters is to look how the total of within cluster sum of squares (WCSS) behaves when the number of clusters changes. WCSS was calculated from 1 to 15 clusters. The optimal number of clusters is when the total WCSS drops radically. It seems that in this case optimal number of clusters is two. However we are here to learn so I decided to analyse model with four clusters. 
+
+After determining the number of clusters I run the K-means alcorithm again
+
+```{r}
+#k-means clustering
+km <-kmeans(dist_eu, centers = 4)
+# plot the Boston dataset with clusters
+pairs(Boston, col = km$cluster)
+```
+It seems that when the data is divided to four clusters there is some clear differences in distriputions of several variables. *Crim*, *zn*, *indus* and *blacks* are variables were one can distinguish clear patterns between clusters. Some variables (*rad* & *tax*) show that sometimes 1 or 2 clusters make a clear distripution but observation of other two clusters are ambigious and there is no clear pattern to be regognised.
+
+#BONUS: LDA using clusters as target classes#
+```{r}
+#Perform k-means on the original Boston data with some reasonable number of clusters (> 2). Remember to standardize the dataset. Then perform LDA using the clusters as target classes. Include all the variables in the Boston data in the LDA model. Visualize the results with a biplot (include arrows representing the relationships of the original variables to the LDA solution). Interpret the results. Which variables are the most influencial linear separators for the clusters? 
+#Loading and scaling Boston data
+scaled_Boston <- scale(Boston)
+scaled_Boston <- as.data.frame(scaled_Boston)
+#colnames(scaled_Boston)
+#calculating the euclidean distance matrix between the observation
+dist_eu <- dist(scaled_Boston)
+#k-means clustering
+set.seed(123)
+km <-kmeans(dist_eu, centers = 4)
+cm <- as.data.frame(km$cluster)
+#adding the clusters to the scaled dataset
+scaled_Boston <- data.frame(scaled_Boston, clust = cm)
+colnames(scaled_Boston)[15] <- "clust"
+summary(scaled_Boston)
+
+#Original Boston dataset is now scaled and the result of K-means clustering is saved to the variable *clust*
+
+
+#LDA = linear discriminant analysis
+lda.fit.km <- lda(clust ~. , data = scaled_Boston)
+#print the lda.fit object
+lda.fit.km
+#the function for lda biplot arrows
+lda.arrows <- function(x, myscale = 1, arrow_heads = 0.1, color = "red", tex = 0.75, choices = c(1,2)){
+  heads <- coef(x)
+  arrows(x0 = 0, y0 = 0, 
+         x1 = myscale * heads[,choices[1]], 
+         y1 = myscale * heads[,choices[2]], col=color, length = arrow_heads)
+  text(myscale * heads[,choices], labels = row.names(heads), 
+       cex = tex, col=color, pos=3)
+}
+#target classes as numeric
+classes <- as.numeric(scaled_Boston$clust)
+#classes
+#plot the lda results
+plot(lda.fit.km, dimen = 2, col = classes, pch = classes)
+lda.arrows(lda.fit.km, myscale = 3)
+```
+
+#Super-bonus#
+3D plot where observations color is the crime classes of the train set
+```{r}
+model_predictors <- dplyr::select(train, -crime)
+#check the dimensions
+#dim(model_predictors)
+#dim(lda.fit$scaling)
+#matrix multiplication
+matrix_product <- as.matrix(model_predictors) %*% lda.fit$scaling
+matrix_product <- as.data.frame(matrix_product)
+#3d plot
+plot_ly(x = matrix_product$LD1, y = matrix_product$LD2, z = matrix_product$LD3, type= 'scatter3d', mode='markers', color = train$crime)
+```
+
+3D plot where observations color is based on the K-means clusters
+```{r}
+model_predictors <- dplyr::select(scaled_Boston, -clust)
+#check the dimensions
+#dim(model_predictors)
+#dim(lda.fit.km$scaling)
+#matrix multiplication
+matrix_product <- as.matrix(model_predictors) %*% lda.fit.km$scaling
+matrix_product <- as.data.frame(matrix_product)
+#3D plot
+plot_ly(x = matrix_product$LD1, y = matrix_product$LD2, z = matrix_product$LD3, type= 'scatter3d', mode='markers', color = scaled_Boston$clust)
+```
+Colors of the both plots is based to four classes. It seems that K-means plot shows the different clusters more clearly than the plot that is based on the crime classification. 
+
