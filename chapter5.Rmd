@@ -1,0 +1,203 @@
+# Chapter 5
+
+*Describe the work you have done this week and summarize your learning.*
+
+- Describe your work and results clearly. 
+- Assume the reader has an introductory course level understanding of writing and reading R code as well as statistical methods.
+- Assume the reader has no previous knowledge of your data or the more advanced methods you are using.
+
+```{r}
+date()
+```
+
+```{r}
+# Load required libraries
+library(ggplot2)
+library(dplyr)
+library(corrplot)
+library(GGally)
+library(tidyr)
+```
+
+Load human data
+```{r}
+human <- read.table("http://s3.amazonaws.com/assets.datacamp.com/production/course_2218/datasets/human2.txt", sep=",",header=T)
+str(human)
+dim(human)
+```
+The data is from United Nations Development Programme data from Human Development Index (HDI) and Gender Inequality Index (GII) databases. 
+We have information on demographic characteristics, including life expectancy (Life.exp), maternal mortality (Mat.mor) etc.Socioeconomic indicators related to gender equality include the ratio of female labour force rate to male labour force rate (Labo.FM) and the ratio of rate of secondary educated females to the rate of secondary educated males (Edu.FM). Lastly, we have information on the proportion of females in the parliament (Parli.F) and the gross national income (GNI) and the expected number of years of education (Edu.Exp). The data are available for 155 different countries.
+
+##Graphical overview of the data
+```{r}
+summary(human)
+# Histograms of the variables
+human %>% 
+  gather(key=var_name, value = value) %>% 
+  ggplot(aes(x=value)) +
+  geom_histogram() +
+  facet_wrap(~var_name, scales = "free_x")
+```
+
+Most of the data are not normally distributed. Adolescent births rate, GNI, maternal mortality are heavily tailed with most of the values being low. Education expectation, women in parliament and women’s labour participation values are roughly normally distributed although with high kurtosis values. Education ratio of females to men and life expectancy values have multiple peaks and have complicated distributions.
+```{r}
+# Correlations of the variables.
+# Create color ramp from dull dark blue to white to dull red.
+colorVector <- c("#4477AA", "#77AADD", "#FFFFFF", "#EE9988", "#BB4444")
+
+# Print the correlation matrix
+corMatrix<-cor(human) 
+corMatrix %>% round(digits = 2)
+
+```
+
+```{r}
+# Visualize the correlation matrix
+
+
+corrplot(corMatrix, method = "color", col = colorRampPalette(colorVector)(200),
+         type = "upper", order = "hclust", number.cex = .8,
+         addCoef.col = "black", # Add coefficient of correlation
+         tl.col = "black", tl.srt = 30, # Text label color and rotation
+         # Combine with significance
+         #p.mat = p.mat, sig.level = 0.01, insig = "blank", 
+         # hide correlation coefficient on the principal diagonal
+         diag = FALSE)
+```
+
+The highest positive correlations were between education expectancy and life expectancy. GNI, education expectation, and life expectancy all had quite strong positive correlations to each other. Maternal mortality was strongly negatively correlated with life expectancy, education expectancy and ratio of female to male education. The variables women in parliament and ratio of women in labour force had low correlations to other variables.
+
+##Perform PCA on non-standardized human data
+Given that the data used describes multiple aspects of societies, identifying bivariate associations is somewhat uninteresting. Therefore, PCA was done to identify whether the indicators presented above belong to same dimensions and if the dimensions have meaningful relationships between each other. 
+```{r}
+# perform principal component analysis (with the SVD method)
+pcaHuman <- prcomp(human)
+
+# print out a summary of PCA. One gets quite a few warnings. The first component explains a whopping 99.99 % of the variance.
+s <- summary(pcaHuman)
+s
+
+```
+
+```{r}
+# rounded percetanges of variance captured by each PC
+pca_pr <- round(100*s$importance[2, ], digits = 1)
+
+# print out the percentages of variance
+pca_pr
+```
+
+```{r}
+# create object pc_lab to be used as axis labels
+pc_lab <- paste0(names(pca_pr), " (", pca_pr, "%)")
+
+# draw a biplot of the principal component representation and the original variables using the first 2 components. GNI explains looks to explain pretty much all of the first principal component.
+biplot(pcaHuman, cex = c(0.8, 1), col = c("grey40", "deeppink2"), xlab = pc_lab[1], ylab = pc_lab[2], xlim = c(-0.5, 0.2))
+
+```
+The model identified 8 principle components but the first of these explains most  of the variation in the data. 
+If we look at the biplot, we can see that the only important component seems to be the gross national income. The fact that GNI overrides all the other variables is related to the fact that in the unmodified data, all the variables have different variances and the PCA treats the variable with the largest variance as the most important one. Therefore, to actually identify the real dimensions, the data was scaled and the analysis was run again.
+
+
+##Perform PCA on standardized human data
+```{r}
+humanStand <- scale(human)
+
+pcaHumanStand <- prcomp(humanStand)
+
+# print out a summary of PCA. One gets quite a few warnings.
+s2 <- summary(pcaHumanStand)
+s2
+```
+
+```{r}
+# rounded percetanges of variance captured by each PC. 
+pca_pr2 <- round(100*s2$importance[2, ], digits = 1)
+
+# print out the percentages of variance. Now the components explain the data much more diversly. The first one explains 52 % of the variability, with the next 3 components explaining 43 % of the variability. 
+pca_pr2
+```
+
+```{r}
+# create object pc_lab to be used as axis labels
+pc_lab2 <- paste0(names(pca_pr2), " (", pca_pr2, "%)")
+
+# draw a biplot of the principal component representation and the original variables using the first 2 components. GNI explains looks to explain pretty much all of the first principal component.
+biplot(pcaHumanStand, cex = c(0.8, 1), col = c("grey40", "deeppink2"), xlab = pc_lab2[1], ylab = pc_lab2[2], xlim = c(-0.25, 0.25))
+```
+The results are quite different. Before there was only one component of any note. After scaling there are say 3 or 4 significant components. 
+
+We can see that the sociodemographic indicators education, GNI, life expectancy, maternal mortality and teen births load to the first principal component. That component explains over 50% of the total variability in the data. We also see that maternal mortality and teen births operate to an opposite direction when compared to the other factors. These makes sense as it would be weird if for instance GNI would increase with increasing rates of maternal mortality and teen births. These correlations were already identified above in the graphical overview step.
+Second, the new PCA produced another distinct principal component, which seems to describe gender equality. The gender ratio at the labour market and proportion of females in parliament relate to this component. This dimension seems to be genuinely distinct from the first as the variables related to this component have almost 90 degree angle (meaning low correlation) in the arrows when compared to the indicators influencing dimension one.I might interpret this to indicate that gender equality in labour market and parliament is not related to economic and "vital" well-being in the society.Instead, other factors (maybe values, attitudes etc.) are at play. A surprising thing is that the gender equality in education seems not to belong to the gender equality component. However, this is probably because the variable only includes information on secondary education. It might be that for overall increases well-being, it is necessary to have a population where each member has at least some education. Differences might occur if tertiary education was used as the measure of education.
+
+I would guess most of the differences are due to scaling normalizing the data, which is an expected attribute in most analyses. Re-do the histogram of beginning to check this out.
+
+```{r}
+
+
+as.data.frame(humanStand) %>% 
+  gather(key=var_name, value = value) %>% 
+  ggplot(aes(x=value)) +
+  geom_histogram() +
+  facet_wrap(~var_name, scales = "free_x")
+```
+No, not that different actually. One major thing at least is that PCA assumes that large values mean more importance. So before the GNI which had way bigger numbers was given the most importance. This does not make too much sense, as the units are different for different variables.
+
+##Interpretation
+One can with standardization more easily see the correlations between different variables. PC1 is composed mostly of educational expectation, GNI, ratio of female to male education, life expectancy and maternal mortality. PC2 is composed mostly of women and parliament and females in labour force ratio. The biplots are certainly easier to read after scaling as the different variables are on similar scales instead of wildly different ones. I would imagine that PC1 is mostly the level or resources put into people, like medicine and schooling. PC2 might be some kind of equality measure that measures how well can women attend the working life instead of being home wives.
+
+
+##########################################
+```{r}
+library(FactoMineR)
+data(tea)
+
+# Explore the data. The tea dataset has 300 observations and 36 variables.
+str(tea)
+dim(tea)
+```
+
+```{r}
+# Since there are so many variables one needs to split them for visualization.
+gather(tea[1:12]) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free")  + geom_bar() + theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+```
+
+```{r}
+gather(tea[13:24]) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free")  + geom_bar() + theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+```
+
+```{r}
+gather(tea[25:36]) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free")  + geom_bar() + theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 8))
+```
+
+```{r}
+# Perform multiple correspondence analysis on the tea data. Some of the columns seem to give errors, so keep only a subset of variables.
+keep_columns <- c("Tea", "how", "sugar", "where", "lunch", "exciting", "price", "Sport")
+
+# select the 'keep_columns' to create a new dataset
+tea_time <- select(tea, one_of(keep_columns))
+
+mca <- MCA(tea_time, graph = FALSE)
+
+# summary of the model
+summary(mca)
+```
+
+```{r}
+# visualize MCA variables
+plot(mca, invisible=c("ind"), habillage = "quali")
+```
+
+he MCA calculates distances between variables in a three-dimensional space (I think, at least). In the plot above, the distances between the variables at first two-dimensions are plotted. We can see that the variable categories opposite to each other (no/yes) are plotted to opposite quadrants of the plot. Second, we see that similar variables are plotted close to each other (for instance not breakfast and not tea time). Third, the variable categories that are well categorized by the dimensions occur further from the center of the plot than others.We can clearly see that especially dinner and lunch seem to determine to be well distinguished. We can also confirm this by looking at the bar plots of the variables: it is clear that there seems to be a relatively small group of lunch or dinner drinkers.
+
+```{r}
+# Dimensions 1 and 2 of MCA correspond mostly to what package people use their tea in, where they drink and the price of the tea. Dimension 3 corresponds somewhat to what kind of tea is drank, and if they add sugar or not. 
+
+# Visualize MCA individuals
+plot(mca, invisible=c("var"), habillage = "quali")
+
+```
+
+
+So many people it’s hard to see different numbers in the clouds. Anyway one can for example see that in the upper right individual 190 and 208 are quite similar in their tea habits, as they are close in the plot.
+In upper left corner, we can see individuals whose tea drinking habits are characterized by drinking tea during lunch and evenings. In the upper right corner we have those individuals who apparently do not drink tea at all. The lower right corner represents tea drinkers that limit their consumption to dinner time. Finally, the lower left corner includes individuals that want to preserve their good night's sleep and only drink tea in the mornings and during tea time. The edgiest group seem to be those drinking with dinner as they do not tolerate drinking tea at any other time
