@@ -1,0 +1,376 @@
+# Chapter 6
+
+*Describe the work you have done this week and summarize your learning.*
+
+- Describe your work and results clearly. 
+- Assume the reader has an introductory course level understanding of writing and reading R code as well as statistical methods.
+- Assume the reader has no previous knowledge of your data or the more advanced methods you are using.
+```{r}
+date()
+```
+
+### Introduction
+
+The analyses from the chapters 8 and 9 of the book Multivariate Analysis for the Behavioral Sciences (Vehkalahti & Everitt 2019) are repeated. In chapter 8, longitudinal analysis on the scores of a brief psychiatric rating scale among 40 males was conducted. Chapter 9 of the book focuses on the time evolution of weights of rats. However, the 2 datasets have been swapped
+
+*Longitudinal analysis of rat growth*
+
+Weight of rats:
+
+```{r,warning=F,message=F}
+setwd("~/IODS-project/data")
+library(openxlsx)
+library(knitr)
+library(tidyverse)
+library(kableExtra)
+rats <- read.xlsx("rats.xlsx")
+#Transform vars
+rats$id <- as.factor(rats$id)
+rats$group <- as.factor(rats$group)
+rats$time <- as.integer(rats$time)
+#First 10 rows
+kable(head(rats,n=10)) %>%
+  kable_styling(full_width=F)
+str(rats)
+table(rats$id)
+table(rats$group)
+table(rats$time)
+```
+
+We can see that the data is in long format, so that each row of the data includes a time observation, grouped by the rat id. The rats are grouped into three separate groups, with 8 rats in the first and 4 rats in the second and third group.The groups are defined by rat diet.
+
+
+```{r}
+labels <- c("1"="Group 1",
+            "2"="Group 2",
+            "3"= "Group 3")
+rats %>%
+  ggplot(aes(x=time,
+             y=weight)) +
+  facet_wrap(~group,
+             labeller=labeller(
+               group=labels)) +
+  geom_line(size=1,aes(col=id)) +
+  scale_colour_viridis_d(option='inferno') +
+  theme_minimal() +
+  theme(legend.position='none') 
+  
+```
+We can see in the plot the evolution of weight of rates in time, separated by the 3 groups.The rats in group 1 have smaller weight compared to group 2 and 3. One of the rats in group 2 is bigger and could be considered as an outlier.In general, over time, all mice in all groups increase their weight.
+
+*Standardised data*
+```{r}
+
+rats <- 
+  rats %>%
+  group_by(time) %>%
+  mutate(mean_weight=mean(weight),
+         sd_weight=sd(weight)) %>%
+  mutate(std_weight=
+           (weight-mean_weight)/
+           sd(weight)) %>%
+  ungroup()
+rats %>%
+  ggplot(aes(x=time,
+             y=std_weight)) +
+  facet_wrap(~group,
+             labeller=labeller(
+               group=labels)) +
+  geom_line(size=1,aes(col=id)) +
+  scale_colour_viridis_d(option='inferno') +
+  theme_minimal() +
+  theme(legend.position='none') 
+  
+```
+In group 1, the weight is stable over time.  In group 2, one mouse has lost weight and all others have gained. In group 3, the weight is also stable with marginal increase or decrease in the mice.
+
+
+*visualization of a summary*
+These individual growth profiles are of little use for a researcher interested in statistical rat weights. An usual approach to combine information is some sort of averaging over groups of interest, in this case the diet groups. 
+
+```{r}
+rats_s <-
+  rats %>%
+  group_by(group,time) %>%
+  mutate(mean=mean(weight),
+         sd=sd(weight),
+         n=n()) %>%
+  mutate(error=
+           qt(0.975,df=n-1)*sd/sqrt(n)) %>%
+  mutate(lower=mean-error,upper=mean+error)
+  
+rats_s %>%
+  ggplot(aes(x=time,
+             y=mean,
+             col=group)) +
+  geom_ribbon(aes(
+    ymax=upper,
+    ymin=lower,
+    fill=group),
+    alpha=0.3) +
+  geom_line(size=1) +
+  scale_color_viridis_d() +
+  scale_fill_viridis_d() + 
+  theme_minimal() +
+  theme(legend.position='bottom') 
+```
+
+In the plot above, the data has been averaged over the group-specific means by time point, and 95% confidence intervals for these means were calculated. As can be seen from the figure, the rats in diet group 1 are clearly smaller than others. The confidence interval of the Group 2 is really wide, and absorps the Group 3. That seems to be related to the fact that there is this one huge rat. The outlier is also clearly visible below in the boxplot. We also see an outliers in the other groups.
+
+```{r}
+rats %>%
+  ggplot(aes(x=as.factor(time),
+             y=weight,
+             col=group)) +
+  geom_boxplot() +
+  #geom_jitter() +
+  scale_fill_viridis_d() + 
+  scale_colour_viridis_d() +
+  theme_minimal() +
+  theme(legend.position='bottom') 
+```
+
+
+**Applying the summary approach**
+A summary measure approach has been applied to longitudinal data. In this approach, we would like to have a look at how much the rats the differ in their weight, depending on the on the diet group (by averaging over the rat weights in each group, without taking into account the starting weight)
+
+```{r,warning=F,message=F}
+rats_s_2 <-
+  rats %>%
+  filter(time>1) %>%
+  group_by(group,id) %>%
+  mutate(mean=mean(weight)) %>%
+  ungroup()
+#filter leaves only one obs into the data
+rats_s_2 %>% filter(time==8) %>%
+  ggplot(aes(x=group,y=mean)) +
+  geom_boxplot() +
+  stat_summary(fun.y = "mean", 
+               geom = "point",
+               shape=23, size=4,
+               fill = "white") +
+  scale_y_continuous(
+    name = 'mean weight during follow-up')
+rats_s_2 %>% 
+  filter(time==8) %>%
+  select(c('id','group','mean')) %>%
+  kable() %>% kable_styling(full_width=F)
+```
+
+The boxplots of the average weights of all the rats by group reveal all groups have outliers. The outliers seem to especially affect the group mean in groups 2 and 3. 
+
+Now, remove the 3 outliers:
+
+```{r, warning=F}
+rats_s_2 %>% filter(id!=2) %>% #group 1
+  filter(id!=12) %>% #group 2
+  filter(id!=13) %>%
+  filter(time==8) %>% #leave only one obs
+  ggplot(aes(x=group,y=mean)) +
+  geom_boxplot() +
+  stat_summary(fun.y = "mean", 
+               geom = "point",
+               shape=23, size=4,
+               fill = "white") +
+  scale_y_continuous(
+    name = 'mean weight during follow-up')
+#Check the previous plot without these outliers
+rats_s_t <-
+  rats %>%
+  filter(id!=2) %>% #group 1
+  filter(id!=12) %>% #group 2
+  filter(id!=13) %>% #group 3
+  group_by(group,time) %>%
+  mutate(mean=mean(weight),
+         sd=sd(weight),
+         n=n()) %>%
+  mutate(error=
+           qt(0.975,df=n-1)*sd/sqrt(n)) %>%
+  mutate(lower=mean-error,upper=mean+error)
+  
+  
+rats_s_t %>%
+  ggplot(aes(x=time,
+             y=mean,
+             col=group)) +
+  geom_ribbon(aes(
+    ymax=upper,
+    ymin=lower,
+    fill=group),
+    alpha=0.3) +
+  geom_line(size=1) +
+  scale_color_viridis_d() +
+  scale_fill_viridis_d() + 
+  theme_minimal() +
+  theme(legend.position='bottom') 
+```
+
+So, now we have much prettier picture with group members resembling each other. The largest average weights seem to occur in the diet group 3, and smallest in the diet group 1. 
+
+*ANOVA*
+The statistical significance of the group differences with and without baseline weight was measured using ANOVA. (A simple t-test cant be used as we have 3 groups)
+
+```{r}
+rats_no_out <- 
+  rats_s_2 %>% filter(id!=2) %>% #group 1
+  filter(id!=12) %>% #group 2
+  filter(id!=13) %>% 
+  filter(time==8) #leave only one row
+anova(lm(mean~group, data=rats_no_out))
+#baseline weight
+baselines <- 
+  rats %>% filter(time==1) %>%
+  select(c('id','weight')) %>%
+  rename(baseline=weight)
+rats_no_out_2 <-
+  inner_join(rats_no_out,baselines,by='id')
+anova(lm(mean~group + baseline,
+         data=rats_no_out_2))
+summary(lm(mean~group + baseline,
+         data=rats_no_out_2))
+```
+
+According to the ANOVA tables and a summary of regression model, the group difference in rat weight is statistically significant. Adding the baseline weight does not affect the results and the baseline weight is not statistically significantly associated with the average weight during follow-up. The diet groups are different to each other and the diet impacts rat size. 
+
+*Analysis of Longitudinal Data II: LinearMixed Effects Models for Normal ResponseVariables*
+
+```{r, warning=F, message=F}
+#read data
+setwd("~/IODS-project/data")
+bprs <- read.xlsx("bprs.xlsx")
+#Transform vars
+bprs$treatment <- as.factor(bprs$treatment)
+bprs$week <- as.integer(bprs$week)
+#First 10 rows
+kable(head(bprs),n=10) %>%
+  kable_styling(full_width=F)
+summary(bprs)
+#make a backup id
+bprs$subject <- as.integer(bprs$subject)
+bprs$id2 <- 
+  ifelse(bprs$treatment==1,
+         bprs$subject,bprs$subject+20)
+unique(bprs$id2)
+unique(bprs$week)
+bprs$subject <- as.factor(bprs$subject)
+```
+
+
+There are 360 observations divided to two treatment groups. In total, there are 40 individuals and each has 9 measurements: baseline (0) and 8 follow-up measurements.
+
+
+*visualization*
+```{r,warning=F,message=F}
+#Looking at how these individuals look by the treatment group:
+library(wesanderson)
+mypal <- wes_palette('Royal1')
+bprs %>%
+  ggplot(aes(x=week,
+             y=bprs,
+             group=id2,
+             col=treatment)) +
+  geom_line(size=1) +
+  scale_colour_manual(values=mypal) +
+  theme_minimal()
+
+#facet
+
+bprs %>%
+  ggplot(aes(x=week,
+             y=bprs,
+             group=id2,
+             col=treatment)) +
+  geom_line(size=1) +
+  scale_colour_manual(values=mypal) +
+  theme_minimal() +
+  facet_wrap(~treatment)
+```
+The lines are quite messy, even after facet.In general, almost all bprs values decrease over the 8 weeks and that higher bprs scores at the beginning have usually also higher scores at the end. 
+
+*Linear Regression Model*
+We would like to see if time and the treatment  has an impact to the BPRS score. The model summary indicates that time decreases the BPRS score, indicating improvements in mental well-being. The treatment received seems not to have a statistically significant association with BPRS score 
+
+```{r}
+mod1 <- lm(
+  bprs~treatment + week,
+  data=bprs)
+summary(mod1)
+```
+
+The model above seems okay but we know that it is obviously wrong because ofthe high autocorrelation in these type of outcomes. Let's try a better approach and fit a multilevel linear regression model, where we model an individual intercept for each individual (random intercept model).
+
+*Random Intercept Model*
+```{r, warning=F, message=F}
+library(lme4)
+# a random intercept model
+modref <- lmer(
+  bprs ~ treatment + week + (1 | id2),
+  data = bprs, REML = FALSE)
+summary(modref)
+```
+
+The model output indicates that there is considerable between-individual variance, which was to be expected. Regarding the effects of treatment and time, the coefficients are identical to the OLS model but the standard errors differ: for treatment, the SE is higher in the random intercept model, and the SE of time is smaller.
+
+The random intercept model basically gives each individual their own base level of BPRS. Obviously, there can be differences by individual in the evolution of the outcome as well. To model this, we will need to give each individual their own slope: 
+
+*Random Intercept and Random Slope Model*
+```{r}
+# a random intercept and 
+#random slope model
+modref2 <- lmer(
+  bprs ~ treatment + week + (week | id2),
+  data = bprs, REML = FALSE)
+summary(modref2)
+anova(modref,modref2)
+```
+
+The model output is relatively similar to the random intercept model. The coefficient of treatment has lowered but the effect of time is still the same size. There is a small change in standard errors. We still found evidence of mental health improving with time but no impact of treatment. The ANOVA output indicates that the random intercept + random slope provides a better model fit to the random intercept model.The log-likelihood test is statistically significant and BIC and AIC smaller.
+
+We have now modelled the within-individual variation and found that only time seems to be related to improvements in the BPRS, whereas treatment doesn't produce betwee-individual differences. We will still need to see if the effects of treatment are dependent on time. For this purpose I'll modify the above model by adding an interaction term between time and treatment.
+
+*Random Intercept and Random Slope Model with interaction*
+```{r}
+# a random intercept and 
+#random slope model with interaction
+modref3 <- lmer(
+  bprs ~ treatment + week + treatment*week +
+    (week | id2),
+  data = bprs, REML = FALSE)
+summary(modref3)
+anova(modref2,modref3)
+```
+
+According to the outputs, this model is worse than the previous.
+
+```{r}
+library(patchwork)
+observed<-
+  bprs %>%
+  ggplot(aes(x=week,
+             y=bprs,
+             group=id2,
+             col=treatment)) +
+  geom_line(size=1) +
+  ggtitle("Observed values") +
+  scale_colour_manual(values=mypal) +
+  theme_minimal() +
+  theme(legend.position='bottom')
+bprs$fitted <- fitted(modref2)
+fitted<-
+  bprs %>%
+  ggplot(aes(x=week,
+             y=fitted,
+             group=id2,
+             col=treatment)) +
+  geom_line(size=1) +
+  scale_colour_manual(values=mypal) +
+  ggtitle('Fitted') +
+  scale_y_continuous(name="bprs") +
+  theme_minimal()+
+  theme(legend.position='bottom')
+observed+fitted +
+  plot_layout(guides='collect') &
+  theme(legend.position='bottom')
+```
+
+The model seems to work relatively nicely. The random slopes and intercept are clearly visible in the Fitted panel above. To conclude, we see that the BPRS scale decreases with time but we do not identify any differences by the treatment received.
